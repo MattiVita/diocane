@@ -1,0 +1,104 @@
+// Configurazione della scena
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Creiamo un semplice pavimento
+const floorGeometry = new THREE.PlaneGeometry(100, 100);
+const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x444444 });
+const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+floor.rotation.x = - Math.PI / 2;
+scene.add(floor);
+
+// Creiamo un semplice cubo come "bersaglio"
+const targetGeometry = new THREE.BoxGeometry(1, 1, 1);
+const targetMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+const target = new THREE.Mesh(targetGeometry, targetMaterial);
+target.position.set(5, 1, -10);
+scene.add(target);
+
+// Posizione della camera iniziale
+camera.position.set(0, 2, 5);
+
+// Movimenti della camera (WSAD + mouse)
+let moveForward = false;
+let moveBackward = false;
+let moveLeft = false;
+let moveRight = false;
+let canShoot = true;
+
+const speed = 0.1;
+const bullets = [];
+
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'w') moveForward = true;
+  if (event.key === 's') moveBackward = true;
+  if (event.key === 'a') moveLeft = true;
+  if (event.key === 'd') moveRight = true;
+});
+
+document.addEventListener('keyup', function(event) {
+  if (event.key === 'w') moveForward = false;
+  if (event.key === 's') moveBackward = false;
+  if (event.key === 'a') moveLeft = false;
+  if (event.key === 'd') moveRight = false;
+});
+
+// Sparare un proiettile
+document.addEventListener('click', () => {
+  if (canShoot) {
+    const bulletGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+    const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+    bullet.position.set(camera.position.x, camera.position.y, camera.position.z);
+    
+    bullet.velocity = new THREE.Vector3();
+    bullet.velocity.x = Math.sin(camera.rotation.y);
+    bullet.velocity.z = -Math.cos(camera.rotation.y);
+
+    bullets.push(bullet);
+    scene.add(bullet);
+
+    canShoot = false;
+    setTimeout(() => {
+      canShoot = true;
+    }, 500); // Limite di tempo per sparare un altro colpo
+  }
+});
+
+function updateBullets() {
+  bullets.forEach((bullet, index) => {
+    bullet.position.add(bullet.velocity.clone().multiplyScalar(0.5));
+    
+    // Rimuovi il proiettile se va troppo lontano
+    if (bullet.position.length() > 50) {
+      scene.remove(bullet);
+      bullets.splice(index, 1);
+    }
+
+    // Collissione semplice con il bersaglio
+    if (bullet.position.distanceTo(target.position) < 1) {
+      console.log("Bersaglio colpito!");
+      target.material.color.set(0x00ff00); // Cambia colore del bersaglio
+    }
+  });
+}
+
+// Animazione principale
+function animate() {
+  requestAnimationFrame(animate);
+
+  // Movimenti della camera
+  if (moveForward) camera.position.z -= speed;
+  if (moveBackward) camera.position.z += speed;
+  if (moveLeft) camera.position.x -= speed;
+  if (moveRight) camera.position.x += speed;
+
+  updateBullets();
+
+  renderer.render(scene, camera);
+}
+
+animate();
